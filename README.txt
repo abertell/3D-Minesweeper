@@ -1,4 +1,4 @@
-3D Minesweeper v1.2.1
+3D Minesweeper v1.2.2
 Author: Adam Bertelli (abertell@andrew.cmu.edu)
 
 3D Minesweeper is an infinitely generated first-person three-dimensional variant of the classic Windows game "Minesweeper". In each cube there is a number, telling you how many of the adjacent cubes (up to 26) contain a mine. Using these numbers, the player's goal is to click on the safe squares to clear them, while right clicking to flag mines as unsafe. As the board is effectively unbounded, your goal is to explore as far as possible without dying.
@@ -49,3 +49,5 @@ NUM_RENDER_DIST: Analogous to RENDER_DIST, but for number rendering. Increase th
 DO_COLLIDE: Prevents the player from going out of bounds if True.
 
 DISP_GUI: Whether or not the ingame overlay (lives, statistics) is displayed.
+
+WIPE_ON_DEATH: Wipes the save file on death if True.
