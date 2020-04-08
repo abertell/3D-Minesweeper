@@ -1,4 +1,4 @@
-#3D Minesweeper v1.2.1
+#3D Minesweeper v1.2.2
 #Author: Adam Bertelli (abertell@andrew.cmu.edu)
 
 #main.py performs all the 3D graphics and rendering
@@ -32,6 +32,7 @@ NUM_CHUNK_SIZE=[0]
 NUM_RENDER_DIST=[3]
 DO_COLLIDE=[True]
 DISP_GUI=[1]
+WIPE_ON_DEATH=[True]
 
 INGAME=[GAME_PROB,LIVES,CAMERA_FOV,PLAYER_SPEED,NUM_DISP_PERCENTAGE,LOAD_LIMIT,
         CHUNK_SIZE,RENDER_DIST,NUM_RENDER_DIST,DISP_GUI]
@@ -45,35 +46,35 @@ class Player():
         self.vel=[0,0,0]
         self.limit=15
         self.pos=pos
-    def bounce(self,coll):
-        for i in range(3):self.vel[i]*=2*(coll[i]*self.vel[0]>=0)-1
-    def move(self,dt):
-        self.pos[0]+=dt*self.vel[0]
-        self.pos[1]+=dt*self.vel[1]
-        self.pos[2]+=dt*self.vel[2]
-    def dpos(self,dp):
-        for i in range(3):self.pos[i]+=dp[i]
-    def turn(self,angle):
-        self.angle+=angle
-    def turnUp(self,angle):
-        self.incline=max(-90,min(90,self.incline+angle))
     def accel(self,a):
         for i in range(3):self.vel[i]+=self.speed*a[i]
         mag=euclideanDistance(self.vel,(0,0,0))
         if mag>self.limit*self.speed:
             for i in range(3):self.vel[i]*=self.limit*self.speed/mag
-    def decel(self,c):
-        for i in range(3):self.vel[i]*=c
+    def accel3rd(self,c):
+        self.accel([c*math.sin(o*self.incline)*math.sin(o*self.angle),
+                    -c*math.sin(o*self.incline)*math.cos(o*self.angle),
+                    c*math.cos(o*self.incline)])
     def accelPar(self,c):
         self.accel([-c*math.sin(o*self.angle)*math.cos(o*self.incline),
                     c*math.cos(o*self.angle)*math.cos(o*self.incline),
                     c*math.sin(o*self.incline)])
     def accelPerp(self,c):
         self.accel([c*math.cos(o*self.angle),c*math.sin(o*self.angle),0])
-    def accel3rd(self,c):
-        self.accel([c*math.sin(o*self.incline)*math.sin(o*self.angle),
-                    -c*math.sin(o*self.incline)*math.cos(o*self.angle),
-                    c*math.cos(o*self.incline)])
+    def bounce(self,coll):
+        for i in range(3):self.vel[i]*=2*(coll[i]*self.vel[0]>=0)-1
+    def decel(self,c):
+        for i in range(3):self.vel[i]*=c
+    def dpos(self,dp):
+        for i in range(3):self.pos[i]+=dp[i]
+    def move(self,dt):
+        self.pos[0]+=dt*self.vel[0]
+        self.pos[1]+=dt*self.vel[1]
+        self.pos[2]+=dt*self.vel[2]
+    def turn(self,angle):
+        self.angle+=angle
+    def turnUp(self,angle):
+        self.incline=max(-90,min(90,self.incline+angle))
 
 #game rendering
 class Renderer(ShowBase):
@@ -227,351 +228,33 @@ Whether the ingame overlay (lives, statistics) is displayed.
         self.settingDelta=[1,1,5,1,1,1,1,1,1,1]
         self.isBool=[0,0,0,0,0,0,0,0,0,1]
         self.setpoint=0
-        try:
-            saveState=open("saves/saveState.txt")
-        except FileNotFoundError:
-            self.canLoad=0
-            self.loadColor=(1,0,0,1)
+        self.canLoad=0
+        self.loadColor=(1,0,0,1)
+        try:saveState=open("saves/saveState.txt")
+        except FileNotFoundError:pass
         else:
-            self.canLoad=1
-            self.loadColor=(0,1,0,1)
+            if saveState.read()!='blank':
+                self.canLoad=1
+                self.loadColor=(0,1,0,1)
             saveState.close()
         self.dispMenu1()
         self.taskMgr.add(self.titleTask,"titleTask")
 
-    def wipe(self,menuAttr):
-        n=len(menuAttr)
-        for i in range(n):menuAttr.pop().destroy()
-
-    def dispMenu1(self):
-        self.titleNum=self.makeNum((0,3,.5),99,title=True)
-        self.menu1Attributes.append(OnscreenText(
-            text="[Enter] - New Game",pos=(0,-.1),scale=.1,fg=(0,1,0,1)))
-        self.menu1Attributes.append(OnscreenText(
-            text="[L] - Load Game",pos=(0,-.3),scale=.1,fg=self.loadColor))
-        self.menu1Attributes.append(OnscreenText(
-            text="[F] - Settings",pos=(0,-.5),scale=.1,fg=(0,1,0,1)))
-        self.menu1Attributes.append(OnscreenText(
-            text="Press [Esc] at any time to quit",scale=.1,pos=(0,-.9),
-            fg=(0,1,0,1)))
-        title=OnscreenImage(image="resources/title.png",scale=(1.04,1,0.16),
-                            pos=(0,0,0.2))
-        title.setTransparency(TransparencyAttrib.MAlpha)
-        self.menu1Attributes.append(title)
-
-    def msg(self,index):
-        if self.isBool[index]:
-            return str(bool(INGAME[index][0]))
-        return str(INGAME[index][0])[0:4]
-    
-    def dispMenu2(self):
-        global INGAME
-        for i in range(len(INGAME)):
-            self.menu2Attributes.append(OnscreenText(
-                text=self.msg(i),pos=(1,.3-.09*i),scale=.09,mayChange=1,
-                fg=(0,1,0,1)))
-            self.menu2Attributes.append(OnscreenText(
-                text=self.settingMsg[i],pos=(-1,.3-.09*i),scale=.09,
-                mayChange=1,align=TextNode.ALeft,fg=(0,1,0,1)))
-        self.menu2Attributes.append(OnscreenText(
-    text="Up/Down Arrows to select setting, Left/Right Arrows to change value",
-            pos=(0,.8),scale=.08,fg=(0,1,0,1)))
-        self.menu2Attributes.append(OnscreenText(
-            text="[Backspace] - return to Main Menu",pos=(0,-.7),scale=.1,
-            fg=(0,1,0,1)))
-        self.menu2Attributes.append(OnscreenText(
-            text="Press [Esc] at any time to quit",scale=.1,pos=(0,-.9),
-            fg=(0,1,0,1)))
-        self.menu2Attributes.append(OnscreenText(
-            text=self.settingExp[self.setpoint],pos=(0,.7),scale=.07,
-            fg=(0,1,0,1),mayChange=1))
-        self.menu2Attributes[2*self.setpoint].setText(
-            '> '+self.msg(self.setpoint)+' <')
-
-    def scroll(self,direction):
-        if self.menu==2:
-            old=self.setpoint
-            new=(old+direction)%len(INGAME)
-            self.menu2Attributes[2*new].setText('> '+self.msg(new)+' <')
-            self.menu2Attributes[-1].setText(self.settingExp[new])
-            self.menu2Attributes[2*old].setText(self.msg(old))
-            self.setpoint=new
-
-    def modify(self,direction):
-        if self.menu==2:
-            global INGAME
-            point=self.setpoint
-            old=INGAME[point][0]
-            new=old+self.settingDelta[point]*direction
-            if (new>self.settingLowerBound[point] and
-                new<self.settingUpperBound[point]):
-                INGAME[point][0]=new
-                self.menu2Attributes[2*point].setText('> '+self.msg(point)+' <')
-
-    def switchMenu1(self):
-        if self.menu==2:
-            self.wipe(self.menu2Attributes)
-            self.menu=1
-            self.dispMenu1()
-
-    def switchMenu2(self):
-        if self.menu==1:
-            self.wipe(self.menu1Attributes)
-            self.titleNum.removeNode()
-            self.titleNum=None
-            self.menu=2
-            self.dispMenu2()
-        
-    #start the game for the first time
-    def startGame(self,load):
-        if self.init and self.menu==1 and load<=self.canLoad:
-            self.wipe(self.menu1Attributes)
-            self.menu=0
-            self.taskMgr.remove("titleTask")
-            self.titleNum.removeNode()
-            self.titleNum=None
-            
-            if load:self.load()
-
-            #gameplay
-            self.speed=PLAYER_SPEED[0]
-            self.accel=1
-            self.collide=DO_COLLIDE[0]
-            self.numRotate=True
-            self.bounce=0.5
-            self.ambientDecel=0.96
-            self.camLens.setFov(CAMERA_FOV[0])
-            self.inGameGUI=DISP_GUI[0]
-
-            #render settings
-            self.chunk=(0,0,0)
-            self.oldChunk=(0,0,0)
-            self.chunkSize=CHUNK_SIZE[0]
-            self.chunkWidth=2*self.chunkSize+1
-            self.renderDistance=RENDER_DIST[0]
-            self.numChunk=(0,0,0)
-            self.oldNumChunk=(0,0,0)
-            self.numChunkSize=NUM_CHUNK_SIZE[0]
-            self.numChunkWidth=2*self.numChunkSize+1
-            self.numRenderDistance=NUM_RENDER_DIST[0]
-            
-            #textures/gui
-            self.normalTex=loader.loadTexture("resources/normalcube.png")
-            self.mineTex=loader.loadTexture("resources/minecube.png")
-            self.flagTex=loader.loadTexture("resources/flagcube.png")
-            self.flagMineTex=loader.loadTexture("resources/flagmine.png")
-            self.saveSplash=None
-            self.saveTime=0
-            self.cross=OnscreenImage(image="resources/crosshair.png",scale=.02)
-            self.cross.setTransparency(TransparencyAttrib.MAlpha)
-            if self.inGameGUI:
-                self.displayLives=OnscreenText(text='Lives:',
-                    pos=(-1.26,-.8),scale=.07,mayChange=1,align=TextNode.ALeft,
-                    fg=(1,.7,0,1))
-                self.displayFlags=OnscreenText(text='Number of flags: 0',
-                    pos=(-1.26,.88),scale=.07,mayChange=1,align=TextNode.ALeft,
-                    fg=(1,.7,0,1),bg=(.5,.5,.5,1))
-                self.displayCubes=OnscreenText(text='Cubes uncovered: 0',
-                    pos=(-1.26,.8),scale=.07,mayChange=1,align=TextNode.ALeft,
-                    fg=(1,.7,0,1),bg=(.5,.5,.5,1))
-                self.displayDist=OnscreenText(text='Distance from origin: 0',
-                    pos=(-1.26,.72),scale=.07,mayChange=1,align=TextNode.ALeft,
-                    fg=(1,.7,0,1),bg=(.5,.5,.5,1))
-            
-            #main loop
-            self.firstStart=True
-            self.newGame(load)
-            self.init=False
-            self.taskMgr.add(self.mainTask,"mainTask")
-
-    #restart in a new game
-    def newGame(self,load):
-        if self.gameOver or self.firstStart:
-            if self.gameOver:
-                self.wipe(self.endAttributes)
-                for place in self.curRange:
-                    chunk=self.chunkStorage.get(place)
-                    for xyz in chunk:
-                        self.removeCube(xyz)
-                for place in self.numCurRange:
-                    numChunk=self.numChunkStorage.get(place)
-                    for xyz in numChunk:
-                        self.removeNum(xyz)
-            
-            self.curRange=set()
-            self.chunkStorage=Store3D(set(),False,None)
-            self.currentCubes=[]
-            self.cubes=0
-            self.currentN=0
-            self.mapToCubes={}
-            
-            self.numCurRange=set()
-            self.numChunkStorage=Store3D(set(),False,None)
-            self.currentNums=[]
-            self.nums=0
-            self.currentNNum=0
-            self.mapToNums={}
-
-            self.sweep=Minesweeper(GAME_PROB[0],LOAD_LIMIT[0],load,
-                                   self.loadVals if load else [0,0,0])
-            self.lives=LIVES[0]
-            self.sweeper=Player(self.speed,self.loadPos if load else [0,0,0])
-            self.texList=[self.normalTex,self.flagTex,
-                      self.normalTex,self.flagTex,
-                      self.mineTex,self.flagMineTex]
-            if self.inGameGUI:
-                self.hearts=[]
-                for i in range(self.lives):
-                    heart=OnscreenImage(image="resources/heart.png",
-                                        pos=(-.95+.16*i,0,-.8),scale=.07)
-                    heart.setTransparency(TransparencyAttrib.MAlpha)
-                    self.hearts.append(heart)
-            self.curRange=self.draw(self.chunkConditions())
-            self.numCurRange=self.draw(self.numConditions())
-            self.firstStart=False
-            self.gameOver=False
-
-    def keyUpdate(self,key,upd):
-        self.keys[key]=upd
-    
-    #draw a new number
-    def makeNum(self,xyz,num,title=False):
-        scale=self.centerScale*self.numSize
-        center=loader.loadModel("resources/cube.egg")
-        center.setScale(1/self.centerScale,1/self.centerScale,1/self.centerScale)
-        center.setPos(self.size*xyz[0],self.size*xyz[1],self.size*xyz[2])
-        if num<10:
-            start=self.numStart[num]
-            shape=self.numShape[num]
-            tex=loader.loadTexture(f"resources/col{num}.png")
-            aCube=loader.loadModel("resources/cube.egg")
-            aCube.setTexture(tex)
-            aCube.setScale(scale,scale,scale)
-            aCube.setPos(scale*start[0],0,scale*start[1])
-            aCube.reparentTo(center)
-            for place in shape:
-                cube=loader.loadModel("resources/cube.egg")
-                cube.setTexture(tex)
-                cube.setPos(place[0]*2,0,place[1]*2)
-                cube.reparentTo(aCube)
-        else:
-            a,b=map(int,str(num)[0:2])
-            tex=loader.loadTexture("resources/col0.png")
-            if title:
-                a,b=3,-1
-                tex=loader.loadTexture("resources/col3.png")
-            starta=self.numStart[a]
-            startb=self.numStart[b]
-            shapea=self.numShape[a]
-            shapeb=self.numShape[b]
-            offa=-6*scale
-            offb=4*scale
-            aCube=loader.loadModel("resources/cube.egg")
-            aCube.setTexture(tex)
-            aCube.setScale(scale,scale,scale)
-            aCube.setPos(scale*starta[0]+offa,0,scale*starta[1])
-            aCube.reparentTo(center)
-            for place in shapea:
-                cube=loader.loadModel("resources/cube.egg")
-                cube.setTexture(tex)
-                cube.setPos(place[0]*2,0,place[1]*2)
-                cube.reparentTo(aCube)
-            bCube=loader.loadModel("resources/cube.egg")
-            bCube.setTexture(tex)
-            bCube.setScale(scale,scale,scale)
-            bCube.setPos(scale*startb[0]+offb,0,scale*startb[1])
-            bCube.reparentTo(center)
-            for place in shapeb:
-                cube=loader.loadModel("resources/cube.egg")
-                cube.setTexture(tex)
-                cube.setPos(place[0]*2,0,place[1]*2)
-                cube.reparentTo(bCube)
-        center.reparentTo(self.render)
-        if title:
-            return center
-        else:
-            if xyz in self.mapToNums:
-                self.currentNums[self.mapToNums[xyz]]=center
-            else:
-                self.currentNums.append(center)
-                self.mapToNums[xyz]=self.currentNNum
-                self.currentNNum+=1
-                self.nums+=1
-
-    #remove a drawn number
-    def removeNum(self,xyz):
-        val=self.mapToNums[xyz]
-        num=self.currentNums[val]
-        num.removeNode()
-        self.currentNums[val]=0
-        self.nums-=1
-    
-    #draw a new cube
-    def makeCube(self,xyz,num):
-        cube=loader.loadModel("resources/cube.egg")
-        cube.setScale(self.size/2,self.size/2,self.size/2)
-        cube.setPos(self.size*xyz[0],self.size*xyz[1],self.size*xyz[2])
-        cube.setTexture(self.texList[num-27])
-        coll=cube.attachNewNode(CollisionNode(','.join(map(str,xyz))))
-        coll.node().addSolid(CollisionBox((0,0,0),1,1,1))
-        coll.node().setIntoCollideMask(BitMask32(3))
-        cube.reparentTo(self.render)
-        if xyz in self.mapToCubes:
-            self.currentCubes[self.mapToCubes[xyz]]=cube
-        else:
-            self.currentCubes.append(cube)
-            self.mapToCubes[xyz]=self.currentN
-            self.currentN+=1
-            self.cubes+=1
-
-    #remove a drawn cube
-    def removeCube(self,xyz):
-        val=self.mapToCubes[xyz]
-        cube=self.currentCubes[val]
-        cube.removeNode()
-        self.currentCubes[val]=0
-        self.cubes-=1
-    
-    #redraws new parts of the space
-    def draw(self,conditions):
-        distance,chunk,width,size,curRange,storage,make,remove,isNum=conditions
-        newRange=set(itertools.product(
-            range(-distance+chunk[0],distance+chunk[0]+1),
-            range(-distance+chunk[1],distance+chunk[1]+1),
-            range(-distance+chunk[2],distance+chunk[2]+1)))
-        for place in newRange:
-            if place not in curRange:
-                if place in storage.mapTo:
-                    getChunk=storage.get(place)
-                    for xyz in getChunk:
-                        make(xyz,self.sweep.board.get(xyz))
-                else:
-                    newChunk=set()
-                    read=self.sweep.board.inSlice(
-                        (place[0]*width-size,place[0]*width+size,
-                         place[1]*width-size,place[1]*width+size,
-                         place[2]*width-size,place[2]*width+size))
-                    for i in read:
-                        if (i[1]<27)==isNum and i[1]>0:
-                            make(i[0],i[1])
-                            newChunk.add(i[0])
-                    storage.assign(place,newChunk)
-        for place in curRange.difference(newRange):
-            getChunk=storage.get(place)
-            for xyz in getChunk:
-                remove(xyz)
-        return newRange
-
-    #uses ray collision to update board state
-    def click(self):
-        if not (self.gameOver or self.init):
-            self.mouseRay.setFromLens(self.camNode,0,0)
-            self.mouseTraverser.traverse(self.render)
-            if self.mouseQueue.getNumEntries()>0:
-                self.mouseQueue.sortEntries()
-                name=self.mouseQueue.getEntry(0).getIntoNode().name
-                xyz=tuple(map(int,name.split(',')))
-                self.clear(xyz)
+    #clear all adjacent unflagged cubes ("chording")
+    def boom(self):
+        flags=self.sweep.board.get(self.numChunk)
+        count=0
+        clear=set()
+        for xyz in self.sweep.adjacent(self.numChunk):
+            if self.sweep.board.get(xyz) in {28,30,32}:
+                count+=1
+                if count>flags:
+                    break
+            elif self.sweep.board.get(xyz) in {27,29,31}:
+                clear.add(xyz)
+        if count==flags:
+            for cube in clear:
+                self.clear(cube)
 
     #clear a cube
     def clear(self,xyz):
@@ -615,8 +298,8 @@ Whether the ingame overlay (lives, statistics) is displayed.
                     if place in self.numCurRange:
                         self.makeNum(xyz,val)
 
-    #uses ray collision to flag a cube
-    def flag(self):
+    #uses ray collision to update board state
+    def click(self):
         if not (self.gameOver or self.init):
             self.mouseRay.setFromLens(self.camNode,0,0)
             self.mouseTraverser.traverse(self.render)
@@ -624,11 +307,79 @@ Whether the ingame overlay (lives, statistics) is displayed.
                 self.mouseQueue.sortEntries()
                 name=self.mouseQueue.getEntry(0).getIntoNode().name
                 xyz=tuple(map(int,name.split(',')))
-                res=self.sweep.flag(xyz)-27
-                self.currentCubes[self.mapToCubes[xyz]].setTexture(
-                    self.texList[res])
+                self.clear(xyz)
 
-    #game over (todo)
+    #redraws new parts of the space
+    def draw(self,conditions):
+        distance,chunk,width,size,curRange,storage,make,remove,isNum=conditions
+        newRange=set(itertools.product(
+            range(-distance+chunk[0],distance+chunk[0]+1),
+            range(-distance+chunk[1],distance+chunk[1]+1),
+            range(-distance+chunk[2],distance+chunk[2]+1)))
+        for place in newRange:
+            if place not in curRange:
+                if place in storage.mapTo:
+                    getChunk=storage.get(place)
+                    for xyz in getChunk:
+                        make(xyz,self.sweep.board.get(xyz))
+                else:
+                    newChunk=set()
+                    read=self.sweep.board.inSlice(
+                        (place[0]*width-size,place[0]*width+size,
+                         place[1]*width-size,place[1]*width+size,
+                         place[2]*width-size,place[2]*width+size))
+                    for i in read:
+                        if (i[1]<27)==isNum and i[1]>0:
+                            make(i[0],i[1])
+                            newChunk.add(i[0])
+                    storage.assign(place,newChunk)
+        for place in curRange.difference(newRange):
+            getChunk=storage.get(place)
+            for xyz in getChunk:
+                remove(xyz)
+        return newRange
+
+    def dispMenu1(self):
+        self.titleNum=self.makeNum((0,3,.5),99,title=True)
+        self.menu1Attributes.append(OnscreenText(
+            text="[Enter] - New Game",pos=(0,-.1),scale=.1,fg=(0,1,0,1)))
+        self.menu1Attributes.append(OnscreenText(
+            text="[L] - Load Game",pos=(0,-.3),scale=.1,fg=self.loadColor))
+        self.menu1Attributes.append(OnscreenText(
+            text="[F] - Settings",pos=(0,-.5),scale=.1,fg=(0,1,0,1)))
+        self.menu1Attributes.append(OnscreenText(
+            text="Press [Esc] at any time to quit",scale=.1,pos=(0,-.9),
+            fg=(0,1,0,1)))
+        title=OnscreenImage(image="resources/title.png",scale=(1.04,1,0.16),
+                            pos=(0,0,0.2))
+        title.setTransparency(TransparencyAttrib.MAlpha)
+        self.menu1Attributes.append(title)
+    
+    def dispMenu2(self):
+        global INGAME
+        for i in range(len(INGAME)):
+            self.menu2Attributes.append(OnscreenText(
+                text=self.msg(i),pos=(1,.3-.09*i),scale=.09,mayChange=1,
+                fg=(0,1,0,1)))
+            self.menu2Attributes.append(OnscreenText(
+                text=self.settingMsg[i],pos=(-1,.3-.09*i),scale=.09,
+                mayChange=1,align=TextNode.ALeft,fg=(0,1,0,1)))
+        self.menu2Attributes.append(OnscreenText(
+    text="Up/Down Arrows to select setting, Left/Right Arrows to change value",
+            pos=(0,.8),scale=.08,fg=(0,1,0,1)))
+        self.menu2Attributes.append(OnscreenText(
+            text="[Backspace] - return to Main Menu",pos=(0,-.7),scale=.1,
+            fg=(0,1,0,1)))
+        self.menu2Attributes.append(OnscreenText(
+            text="Press [Esc] at any time to quit",scale=.1,pos=(0,-.9),
+            fg=(0,1,0,1)))
+        self.menu2Attributes.append(OnscreenText(
+            text=self.settingExp[self.setpoint],pos=(0,.7),scale=.07,
+            fg=(0,1,0,1),mayChange=1))
+        self.menu2Attributes[2*self.setpoint].setText(
+            '> '+self.msg(self.setpoint)+' <')
+
+    #game over
     def endGame(self):
         self.gameOver=True
         score=self.sweep.cubes+100*self.sweep.goodFlags
@@ -642,6 +393,10 @@ Whether the ingame overlay (lives, statistics) is displayed.
             highscore=score
             file.write(str(highscore))
             file.close()
+        if self.wipeOnDeath:
+            saveState=open('saves/saveState.txt','w')
+            saveState.write('blank')
+            saveState.close()
         self.texList=[self.normalTex,self.flagTex,
                       self.mineTex,self.flagMineTex,
                       self.mineTex,self.flagMineTex]
@@ -665,42 +420,21 @@ Whether the ingame overlay (lives, statistics) is displayed.
             text=f'Local Highscore: {highscore}',pos=(0,-0.5),scale=.15,
             fg=(1,1,1,1)))
 
-    #clear all adjacent unflagged cubes ("chording")
-    def boom(self):
-        flags=self.sweep.board.get(self.numChunk)
-        count=0
-        clear=set()
-        for xyz in self.sweep.adjacent(self.numChunk):
-            if self.sweep.board.get(xyz) in {28,30,32}:
-                count+=1
-                if count>flags:
-                    break
-            elif self.sweep.board.get(xyz) in {27,29,31}:
-                clear.add(xyz)
-        if count==flags:
-            for cube in clear:
-                self.clear(cube)
-
-    #save current game state
-    def save(self):
+    #uses ray collision to flag a cube
+    def flag(self):
         if not (self.gameOver or self.init):
-            saveState=open("saves/saveState.txt",'w')
-            saveState.write(str(GAME_PROB[0])+'#')
-            saveState.write(str(self.lives)+'#')
-            saveState.write(str(self.sweeper.pos)[1:-1]+'#')
-            saveState.write(str(self.sweep.cubes)+'#')
-            saveState.write(str(self.sweep.goodFlags)+'#')
-            saveState.write(str(self.sweep.badFlags)+'#')
-            saveState.write(str(self.sweep.board.n)+'#')
-            for key in self.sweep.board.mapTo:
-                saveState.write(str(key)[1:-1]+'$'+
-                                str(self.sweep.board.mapTo[key])+'#')
-            for val in self.sweep.board.memory:
-                saveState.write(str(val)+'#')
-            saveState.close()
-            if self.saveSplash:self.saveSplash.destroy()
-            self.saveTime=0
-            self.saveSplash=OnscreenText(text="Game Saved",scale=.2,fg=(1,1,1,1))
+            self.mouseRay.setFromLens(self.camNode,0,0)
+            self.mouseTraverser.traverse(self.render)
+            if self.mouseQueue.getNumEntries()>0:
+                self.mouseQueue.sortEntries()
+                name=self.mouseQueue.getEntry(0).getIntoNode().name
+                xyz=tuple(map(int,name.split(',')))
+                res=self.sweep.flag(xyz)-27
+                self.currentCubes[self.mapToCubes[xyz]].setTexture(
+                    self.texList[res])
+
+    def keyUpdate(self,key,upd):
+        self.keys[key]=upd
 
     #load existing game state
     def load(self):
@@ -724,21 +458,6 @@ Whether the ingame overlay (lives, statistics) is displayed.
             memory.append(int(data[7+n+i]))
         self.loadVals+=[mapTo,memory,n]
 
-    #manages 3D rendering in the title menu
-    def titleTask(self,task):
-        mouse=self.mouseWatcherNode
-        if mouse.hasMouse():
-            x,y=mouse.getMouseX(),mouse.getMouseY()
-            dx,dy=x-self.oldx,y-self.oldy
-            if self.titleNum:
-                cur=self.titleNum.getHpr()
-                self.titleNum.setHpr(cur[0]+self.mouseSens/2*dx,
-                                     cur[1]-self.mouseSens/2*dy,0)
-        self.win.movePointer(0,
-            int(self.win.getProperties().getXSize()/2),
-            int(self.win.getProperties().getYSize()/2))
-        return Task.cont
-    
     #main loop
     def mainTask(self,task):
         #player movement
@@ -823,6 +542,293 @@ Whether the ingame overlay (lives, statistics) is displayed.
             int(self.win.getProperties().getXSize()/2),
             int(self.win.getProperties().getYSize()/2))
         return Task.cont
+
+    #draw a new cube
+    def makeCube(self,xyz,num):
+        cube=loader.loadModel("resources/cube.egg")
+        cube.setScale(self.size/2,self.size/2,self.size/2)
+        cube.setPos(self.size*xyz[0],self.size*xyz[1],self.size*xyz[2])
+        cube.setTexture(self.texList[num-27])
+        coll=cube.attachNewNode(CollisionNode(','.join(map(str,xyz))))
+        coll.node().addSolid(CollisionBox((0,0,0),1,1,1))
+        coll.node().setIntoCollideMask(BitMask32(3))
+        cube.reparentTo(self.render)
+        if xyz in self.mapToCubes:
+            self.currentCubes[self.mapToCubes[xyz]]=cube
+        else:
+            self.currentCubes.append(cube)
+            self.mapToCubes[xyz]=self.currentN
+            self.currentN+=1
+            self.cubes+=1
+    
+    #draw a new number
+    def makeNum(self,xyz,num,title=False):
+        scale=self.centerScale*self.numSize
+        center=loader.loadModel("resources/cube.egg")
+        center.setScale(1/self.centerScale,1/self.centerScale,1/self.centerScale)
+        center.setPos(self.size*xyz[0],self.size*xyz[1],self.size*xyz[2])
+        if num<10:
+            start=self.numStart[num]
+            shape=self.numShape[num]
+            tex=loader.loadTexture(f"resources/col{num}.png")
+            aCube=loader.loadModel("resources/cube.egg")
+            aCube.setTexture(tex)
+            aCube.setScale(scale,scale,scale)
+            aCube.setPos(scale*start[0],0,scale*start[1])
+            aCube.reparentTo(center)
+            for place in shape:
+                cube=loader.loadModel("resources/cube.egg")
+                cube.setTexture(tex)
+                cube.setPos(place[0]*2,0,place[1]*2)
+                cube.reparentTo(aCube)
+        else:
+            a,b=map(int,str(num)[0:2])
+            tex=loader.loadTexture("resources/col0.png")
+            if title:
+                a,b=3,-1
+                tex=loader.loadTexture("resources/col3.png")
+            starta=self.numStart[a]
+            startb=self.numStart[b]
+            shapea=self.numShape[a]
+            shapeb=self.numShape[b]
+            offa=-6*scale
+            offb=4*scale
+            aCube=loader.loadModel("resources/cube.egg")
+            aCube.setTexture(tex)
+            aCube.setScale(scale,scale,scale)
+            aCube.setPos(scale*starta[0]+offa,0,scale*starta[1])
+            aCube.reparentTo(center)
+            for place in shapea:
+                cube=loader.loadModel("resources/cube.egg")
+                cube.setTexture(tex)
+                cube.setPos(place[0]*2,0,place[1]*2)
+                cube.reparentTo(aCube)
+            bCube=loader.loadModel("resources/cube.egg")
+            bCube.setTexture(tex)
+            bCube.setScale(scale,scale,scale)
+            bCube.setPos(scale*startb[0]+offb,0,scale*startb[1])
+            bCube.reparentTo(center)
+            for place in shapeb:
+                cube=loader.loadModel("resources/cube.egg")
+                cube.setTexture(tex)
+                cube.setPos(place[0]*2,0,place[1]*2)
+                cube.reparentTo(bCube)
+        center.reparentTo(self.render)
+        if title:
+            return center
+        else:
+            if xyz in self.mapToNums:
+                self.currentNums[self.mapToNums[xyz]]=center
+            else:
+                self.currentNums.append(center)
+                self.mapToNums[xyz]=self.currentNNum
+                self.currentNNum+=1
+                self.nums+=1
+
+    def modify(self,direction):
+        if self.menu==2:
+            global INGAME
+            point=self.setpoint
+            old=INGAME[point][0]
+            new=old+self.settingDelta[point]*direction
+            if (new>self.settingLowerBound[point] and
+                new<self.settingUpperBound[point]):
+                INGAME[point][0]=new
+                self.menu2Attributes[2*point].setText('> '+self.msg(point)+' <')
+
+    def msg(self,index):
+        if self.isBool[index]:
+            return str(bool(INGAME[index][0]))
+        return str(INGAME[index][0])[0:4]
+
+    #restart in a new game
+    def newGame(self,load):
+        if self.gameOver or self.firstStart:
+            if self.gameOver:
+                self.wipe(self.endAttributes)
+                for place in self.curRange:
+                    chunk=self.chunkStorage.get(place)
+                    for xyz in chunk:
+                        self.removeCube(xyz)
+                for place in self.numCurRange:
+                    numChunk=self.numChunkStorage.get(place)
+                    for xyz in numChunk:
+                        self.removeNum(xyz)
+            
+            self.curRange=set()
+            self.chunkStorage=Store3D(set(),False,None)
+            self.currentCubes=[]
+            self.cubes=0
+            self.currentN=0
+            self.mapToCubes={}
+            
+            self.numCurRange=set()
+            self.numChunkStorage=Store3D(set(),False,None)
+            self.currentNums=[]
+            self.nums=0
+            self.currentNNum=0
+            self.mapToNums={}
+
+            self.sweep=Minesweeper(GAME_PROB[0],LOAD_LIMIT[0],load,
+                                   self.loadVals if load else [0,0,0])
+            self.lives=LIVES[0]
+            self.sweeper=Player(self.speed,self.loadPos if load else [0,0,0])
+            self.texList=[self.normalTex,self.flagTex,
+                      self.normalTex,self.flagTex,
+                      self.mineTex,self.flagMineTex]
+            if self.inGameGUI:
+                self.hearts=[]
+                for i in range(self.lives):
+                    heart=OnscreenImage(image="resources/heart.png",
+                                        pos=(-.95+.16*i,0,-.8),scale=.07)
+                    heart.setTransparency(TransparencyAttrib.MAlpha)
+                    self.hearts.append(heart)
+            self.curRange=self.draw(self.chunkConditions())
+            self.numCurRange=self.draw(self.numConditions())
+            self.firstStart=False
+            self.gameOver=False
+
+    #remove a drawn cube
+    def removeCube(self,xyz):
+        val=self.mapToCubes[xyz]
+        cube=self.currentCubes[val]
+        cube.removeNode()
+        self.currentCubes[val]=0
+        self.cubes-=1
+
+    #remove a drawn number
+    def removeNum(self,xyz):
+        val=self.mapToNums[xyz]
+        num=self.currentNums[val]
+        num.removeNode()
+        self.currentNums[val]=0
+        self.nums-=1
+
+    #save current game state
+    def save(self):
+        if not (self.gameOver or self.init):
+            saveState=open("saves/saveState.txt",'w')
+            saveState.write(str(GAME_PROB[0])+'#')
+            saveState.write(str(self.lives)+'#')
+            saveState.write(str(self.sweeper.pos)[1:-1]+'#')
+            saveState.write(str(self.sweep.cubes)+'#')
+            saveState.write(str(self.sweep.goodFlags)+'#')
+            saveState.write(str(self.sweep.badFlags)+'#')
+            saveState.write(str(self.sweep.board.n)+'#')
+            for key in self.sweep.board.mapTo:
+                saveState.write(str(key)[1:-1]+'$'+
+                                str(self.sweep.board.mapTo[key])+'#')
+            for val in self.sweep.board.memory:
+                saveState.write(str(val)+'#')
+            saveState.close()
+            if self.saveSplash:self.saveSplash.destroy()
+            self.saveTime=0
+            self.saveSplash=OnscreenText(text="Game Saved",scale=.2,fg=(1,1,1,1))
+
+    def scroll(self,direction):
+        if self.menu==2:
+            old=self.setpoint
+            new=(old+direction)%len(INGAME)
+            self.menu2Attributes[2*new].setText('> '+self.msg(new)+' <')
+            self.menu2Attributes[-1].setText(self.settingExp[new])
+            self.menu2Attributes[2*old].setText(self.msg(old))
+            self.setpoint=new
+        
+    #start the game for the first time
+    def startGame(self,load):
+        if self.init and self.menu==1 and load<=self.canLoad:
+            self.wipe(self.menu1Attributes)
+            self.menu=0
+            self.taskMgr.remove("titleTask")
+            self.titleNum.removeNode()
+            self.titleNum=None
+            
+            if load:self.load()
+
+            #gameplay
+            self.speed=PLAYER_SPEED[0]
+            self.accel=1
+            self.collide=DO_COLLIDE[0]
+            self.wipeOnDeath=WIPE_ON_DEATH[0]
+            self.numRotate=True
+            self.bounce=0.5
+            self.ambientDecel=0.96
+            self.camLens.setFov(CAMERA_FOV[0])
+            self.inGameGUI=DISP_GUI[0]
+
+            #render settings
+            self.chunk=(0,0,0)
+            self.oldChunk=(0,0,0)
+            self.chunkSize=CHUNK_SIZE[0]
+            self.chunkWidth=2*self.chunkSize+1
+            self.renderDistance=RENDER_DIST[0]
+            self.numChunk=(0,0,0)
+            self.oldNumChunk=(0,0,0)
+            self.numChunkSize=NUM_CHUNK_SIZE[0]
+            self.numChunkWidth=2*self.numChunkSize+1
+            self.numRenderDistance=NUM_RENDER_DIST[0]
+            
+            #textures/gui
+            self.normalTex=loader.loadTexture("resources/normalcube.png")
+            self.mineTex=loader.loadTexture("resources/minecube.png")
+            self.flagTex=loader.loadTexture("resources/flagcube.png")
+            self.flagMineTex=loader.loadTexture("resources/flagmine.png")
+            self.saveSplash=None
+            self.saveTime=0
+            self.cross=OnscreenImage(image="resources/crosshair.png",scale=.02)
+            self.cross.setTransparency(TransparencyAttrib.MAlpha)
+            if self.inGameGUI:
+                self.displayLives=OnscreenText(text='Lives:',
+                    pos=(-1.26,-.8),scale=.07,mayChange=1,align=TextNode.ALeft,
+                    fg=(1,.7,0,1))
+                self.displayFlags=OnscreenText(text='Number of flags: 0',
+                    pos=(-1.26,.88),scale=.07,mayChange=1,align=TextNode.ALeft,
+                    fg=(1,.7,0,1),bg=(.5,.5,.5,1))
+                self.displayCubes=OnscreenText(text='Cubes uncovered: 0',
+                    pos=(-1.26,.8),scale=.07,mayChange=1,align=TextNode.ALeft,
+                    fg=(1,.7,0,1),bg=(.5,.5,.5,1))
+                self.displayDist=OnscreenText(text='Distance from origin: 0',
+                    pos=(-1.26,.72),scale=.07,mayChange=1,align=TextNode.ALeft,
+                    fg=(1,.7,0,1),bg=(.5,.5,.5,1))
+            
+            #main loop
+            self.firstStart=True
+            self.newGame(load)
+            self.init=False
+            self.taskMgr.add(self.mainTask,"mainTask")
+
+    def switchMenu1(self):
+        if self.menu==2:
+            self.wipe(self.menu2Attributes)
+            self.menu=1
+            self.dispMenu1()
+
+    def switchMenu2(self):
+        if self.menu==1:
+            self.wipe(self.menu1Attributes)
+            self.titleNum.removeNode()
+            self.titleNum=None
+            self.menu=2
+            self.dispMenu2()
+
+    #manages 3D rendering in the title menu
+    def titleTask(self,task):
+        mouse=self.mouseWatcherNode
+        if mouse.hasMouse():
+            x,y=mouse.getMouseX(),mouse.getMouseY()
+            dx,dy=x-self.oldx,y-self.oldy
+            if self.titleNum:
+                cur=self.titleNum.getHpr()
+                self.titleNum.setHpr(cur[0]+self.mouseSens/2*dx,
+                                     cur[1]-self.mouseSens/2*dy,0)
+        self.win.movePointer(0,
+            int(self.win.getProperties().getXSize()/2),
+            int(self.win.getProperties().getYSize()/2))
+        return Task.cont
+
+    def wipe(self,menuAttr):
+        n=len(menuAttr)
+        for i in range(n):menuAttr.pop().destroy()
 
 app=Renderer()
 app.run()
