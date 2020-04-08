@@ -1,4 +1,4 @@
-#Minesweeper Class for 3D Minesweeper 1.2.0
+#Minesweeper Class for 3D Minesweeper 1.2.2
 #Controls arbitrary storage in 3D space and game logic
 
 import math,random,copy,itertools
@@ -77,18 +77,6 @@ class Minesweeper():
         dx,dy,dz=zip(*(x for x in itertools.product([-1,0,1],repeat=3) if x!=(0,0,0)))
         return [(xyz[0]+dx[i],xyz[1]+dy[i],xyz[2]+dz[i])for i in range(26)]
 
-    #wrapper function for iterative clearing
-    def clearWrapper(self,xyz):
-        self.newBlocks=set()
-        self.removedBlocks=set()
-        self.origin=xyz
-        self.clear(xyz)
-        while self.queue:
-            block=self.queue.pop()
-            self.clear(block)
-        self.temp=set()
-        return (self.newBlocks.difference(self.removedBlocks),self.removedBlocks)
-
     #iterative clearing
     def clear(self,xyz):
         self.temp.add(xyz)
@@ -112,6 +100,18 @@ class Minesweeper():
                 for i in self.adjacent(xyz):
                     if self.board.get(i)==27 and i not in self.temp:
                         self.queue.add(i)
+
+    #wrapper function for iterative clearing
+    def clearWrapper(self,xyz):
+        self.newBlocks=set()
+        self.removedBlocks=set()
+        self.origin=xyz
+        self.clear(xyz)
+        while self.queue:
+            block=self.queue.pop()
+            self.clear(block)
+        self.temp=set()
+        return (self.newBlocks.difference(self.removedBlocks),self.removedBlocks)
 
     #clicking a cube
     def click(self,xyz):
