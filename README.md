@@ -34,7 +34,7 @@ Explanation of changeable settings (found in main.py) below. Note that most of t
 + __NUM_DISP_PERCENTAGE__: What percentage of the cube you want the size of the displayed number to take up.
 + __LOAD_LIMIT__: How far the game is allowed to propogate outwards while clearing new regions before manually halting, measured in euclidean distance. The lower the number, the less time loading new regions will take.
 + __CHUNK_SIZE__: The playing field is split up into "chunks" for rendering purposes. Each chunk is a cube with side length 2 * CHUNK_SIZE + 1.
-+ __RENDER_DIST__: At any given time, there is a 2\*RENDER_DIST+1 size cube of chunks being rendered, making your total visible area a cube with side length (2 * RENDER_DIST + 1) * (2 * CHUNK_SIZE + 1).
++ __RENDER_DIST__: At any given time, there is a 2 * RENDER_DIST + 1 size cube of chunks being rendered, making your total visible area a cube with side length (2 * RENDER_DIST + 1) * (2 * CHUNK_SIZE + 1).
 + __NUM_CHUNK_SIZE__: Analogous to CHUNK_SIZE, but for number rendering. This is recommended to be kept at 0, so that numbers load smoothly as the player traverses cubes.
 + __NUM_RENDER_DIST__: Analogous to RENDER_DIST, but for number rendering. Increase this value if you want to see more numbers at a given time, although this may slow performance somewhat.
 + __DO_COLLIDE__: Prevents the player from going out of bounds if True.
