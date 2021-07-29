@@ -1,4 +1,4 @@
-3D Minesweeper v1.2.2
+3D Minesweeper v1.2.3
 
 Author: Adam Bertelli (abertell@andrew.cmu.edu)
 
@@ -40,3 +40,4 @@ Explanation of changeable settings (found in main.py) below. Note that most of t
 + __DO_COLLIDE__: Prevents the player from going out of bounds if True.
 + __DISP_GUI__: Whether or not the ingame overlay (lives, statistics) is displayed.
 + __WIPE_ON_DEATH__: Wipes the save file on death if True.
++ __FULLSCREEN__: Sets the game window to fullscreen.
