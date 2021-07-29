@@ -1,4 +1,4 @@
-#Minesweeper Class for 3D Minesweeper 1.2.2
+#Minesweeper Class for 3D Minesweeper 1.2.3
 #Controls arbitrary storage in 3D space and game logic
 
 import math,random,copy,itertools

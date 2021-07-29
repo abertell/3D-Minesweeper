@@ -1,4 +1,4 @@
-#3D Minesweeper v1.2.2
+#3D Minesweeper v1.2.3
 #Author: Adam Bertelli (abertell@andrew.cmu.edu)
 
 #main.py performs all the 3D graphics and rendering
@@ -20,19 +20,20 @@ from panda3d.core import CollisionRay,CollisionBox,CollisionSphere
 from panda3d.core import BitMask32,LVector3
 
 #game constants
-GAME_PROB=[17]
+GAME_PROB=[13]
 LIVES=[1]
 CAMERA_FOV=[120]
 PLAYER_SPEED=[2]
 NUM_DISP_PERCENTAGE=[75]
 LOAD_LIMIT=[30]
-CHUNK_SIZE=[3]
-RENDER_DIST=[5]
+CHUNK_SIZE=[2]
+RENDER_DIST=[2]
 NUM_CHUNK_SIZE=[0]
-NUM_RENDER_DIST=[3]
+NUM_RENDER_DIST=[2]
 DO_COLLIDE=[True]
 DISP_GUI=[1]
-WIPE_ON_DEATH=[True]
+WIPE_ON_DEATH=[False]
+FULLSCREEN=[1]
 
 INGAME=[GAME_PROB,LIVES,CAMERA_FOV,PLAYER_SPEED,NUM_DISP_PERCENTAGE,LOAD_LIMIT,
         CHUNK_SIZE,RENDER_DIST,NUM_RENDER_DIST,DISP_GUI]
@@ -112,6 +113,7 @@ class Renderer(ShowBase):
         window=WindowProperties()
         window.setMouseMode(WindowProperties.M_relative)
         window.setCursorHidden(True)
+        window.setFullscreen(FULLSCREEN[0])
         self.win.requestProperties(window)
         self.oldx,self.oldy=0,0
 
