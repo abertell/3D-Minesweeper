@@ -1,4 +1,4 @@
-#3D Minesweeper v1.2.3
+#3D Minesweeper v1.3.0
 #Author: Adam Bertelli (abertell@andrew.cmu.edu)
 
 #main.py performs all the 3D graphics and rendering
@@ -18,22 +18,23 @@ from panda3d.core import WindowProperties,TextNode
 from panda3d.core import CollisionTraverser,CollisionNode,CollisionHandlerQueue
 from panda3d.core import CollisionRay,CollisionBox,CollisionSphere
 from panda3d.core import BitMask32,LVector3
+from panda3d.core import KeyboardButton as KB
 
 #game constants
-GAME_PROB=[10]
+GAME_PROB=[17]
 LIVES=[1]
 CAMERA_FOV=[120]
 PLAYER_SPEED=[2]
 NUM_DISP_PERCENTAGE=[75]
 LOAD_LIMIT=[30]
-CHUNK_SIZE=[3]
-RENDER_DIST=[3]
+CHUNK_SIZE=[4]
+RENDER_DIST=[2]
 NUM_CHUNK_SIZE=[0]
 NUM_RENDER_DIST=[3]
 DO_COLLIDE=[True]
 DISP_GUI=[1]
 WIPE_ON_DEATH=[False]
-FULLSCREEN=[0]
+FULLSCREEN=[True]
 
 INGAME=[GAME_PROB,LIVES,CAMERA_FOV,PLAYER_SPEED,NUM_DISP_PERCENTAGE,LOAD_LIMIT,
         CHUNK_SIZE,RENDER_DIST,NUM_RENDER_DIST,DISP_GUI]
@@ -118,27 +119,16 @@ class Renderer(ShowBase):
         self.oldx,self.oldy=0,0
 
         #key input
-        self.keys={'f':0,'b':0,'l':0,'r':0,'u':0,'d':0}
         self.accept('escape',sys.exit)
         self.accept('mouse1',self.click)
+        self.accept('e',self.click)
         self.accept('mouse3',self.flag)
-        self.accept('space',self.keyUpdate,['f',1])
-        self.accept('shift',self.keyUpdate,['b',1])
-        self.accept('a',self.keyUpdate,['l',1])
-        self.accept('d',self.keyUpdate,['r',1])
-        self.accept('w',self.keyUpdate,['u',1])
-        self.accept('s',self.keyUpdate,['d',1])
-        self.accept('space-up',self.keyUpdate,['f',0])
-        self.accept('shift-up',self.keyUpdate,['b',0])
-        self.accept('a-up',self.keyUpdate,['l',0])
-        self.accept('d-up',self.keyUpdate,['r',0])
-        self.accept('w-up',self.keyUpdate,['u',0])
-        self.accept('s-up',self.keyUpdate,['d',0])
-        self.accept('q',self.boom)
+        self.accept('q',self.flag)
+        self.accept('f',self.boom)
         self.accept('tab',self.save)
         
         self.accept('r',self.newGame,[False])
-        self.accept('f',self.switchMenu2)
+        self.accept('m',self.switchMenu2)
         self.accept('backspace',self.switchMenu1)
         self.accept('enter',self.startGame,[False])
         self.accept('l',self.startGame,[True])
@@ -348,7 +338,7 @@ Whether the ingame overlay (lives, statistics) is displayed.
         self.menu1Attributes.append(OnscreenText(
             text="[L] - Load Game",pos=(0,-.3),scale=.1,fg=self.loadColor))
         self.menu1Attributes.append(OnscreenText(
-            text="[F] - Settings",pos=(0,-.5),scale=.1,fg=(0,1,0,1)))
+            text="[M] - Settings",pos=(0,-.5),scale=.1,fg=(0,1,0,1)))
         self.menu1Attributes.append(OnscreenText(
             text="Press [Esc] at any time to quit",scale=.1,pos=(0,-.9),
             fg=(0,1,0,1)))
@@ -435,9 +425,6 @@ Whether the ingame overlay (lives, statistics) is displayed.
                 self.currentCubes[self.mapToCubes[xyz]].setTexture(
                     self.texList[res])
 
-    def keyUpdate(self,key,upd):
-        self.keys[key]=upd
-
     #load existing game state
     def load(self):
         saveState=open("saves/saveState.txt")
@@ -463,9 +450,15 @@ Whether the ingame overlay (lives, statistics) is displayed.
     #main loop
     def mainTask(self,task):
         #player movement
+        game=self.mouseWatcherNode
         dt = min(globalClock.getDt(),1/self.sweeper.limit)
-        vf,vb,vl,vr,vu,vd=(self.keys['f'],self.keys['b'],self.keys['l'],
-                           self.keys['r'],self.keys['u'],self.keys['d'])
+        vf,vb=(game.isButtonDown(key) for key in (KB.space(),KB.shift()))
+        vl,vr,vu,vd=(game.isButtonDown(KB.asciiKey(key)) for key in 'adws')
+        cl,cr,cu,cd=(game.isButtonDown(key) for key in (KB.left(),KB.right(),KB.up(),KB.down()))
+        if (cl+cr)%2:
+            self.sweeper.turn((cl-cr)*self.camAccel)
+        if (cu+cd)%2:
+            self.sweeper.turnUp((cu-cd)*self.camAccel)
         if (vf+vb)%2:
             self.sweeper.accelPar((vf-vb)*self.accel)
         if (vr+vl)%2:
@@ -524,9 +517,8 @@ Whether the ingame overlay (lives, statistics) is displayed.
         self.oldNumChunk=self.numChunk
 
         #mouse movement
-        mouse=self.mouseWatcherNode
-        if mouse.hasMouse():
-            x,y=mouse.getMouseX(),mouse.getMouseY()
+        if game.hasMouse():
+            x,y=game.getMouseX(),game.getMouseY()
             dx,dy=x-self.oldx,y-self.oldy
             self.sweeper.turn(-self.mouseSens*dx)
             self.sweeper.turnUp(self.mouseSens*dy)
@@ -750,6 +742,7 @@ Whether the ingame overlay (lives, statistics) is displayed.
             #gameplay
             self.speed=PLAYER_SPEED[0]
             self.accel=1
+            self.camAccel=1
             self.collide=DO_COLLIDE[0]
             self.wipeOnDeath=WIPE_ON_DEATH[0]
             self.numRotate=True
