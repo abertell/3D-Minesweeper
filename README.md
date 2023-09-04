@@ -1,22 +1,24 @@
-3D Minesweeper v1.2.3
+3D Minesweeper v1.3.0
 
 Author: Adam Bertelli (abertell@andrew.cmu.edu)
+
+Python version 3.9 recommended
 
 3D Minesweeper is an infinitely generated first-person three-dimensional variant of the classic Windows game "Minesweeper". In each cube there is a number, telling you how many of the adjacent cubes (up to 26) contain a mine. Using these numbers, the player's goal is to click on the safe squares to clear them, while right clicking to flag mines as unsafe. As the board is effectively unbounded, your goal is to explore as far as possible without dying.
 
 This game uses the Panda3D graphics library. To run 3D Minesweeper, use "pip install Panda3D" in command prompt to add Panda3D to python (if you do not already have it). Then, run main.py in this folder to play the game.
 
 Controls (ingame):
-+ Mouse - point cursor
++ Mouse (or arrow keys) - point cursor
 + Space - accelerate forward
 + Shift - accelerate backwards
 + W key - accelerate up
 + A key - accelerate left
 + S key - accelerate down
 + D key - accelerate right
-+ Click - clear a cube
-+ Right Click - flag a cube
-+ Q key - clear all unflagged cubes around you (if the number of flags matches the number in the cube)
++ Click (or E key) - clear a cube
++ Right Click (or Q key) - flag a cube
++ F key - clear all unflagged cubes around you (if the number of flags matches the number in the cube)
 + Tab - save the current game state
 + R key - restart (after game over)
 + Escape - quit
